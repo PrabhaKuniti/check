@@ -2411,15 +2411,11 @@ const FlowerAura = () => {
 
 			console.log('Adding to Shopify cart with form data:', Object.fromEntries(formData));
 
-			// POST directly to Shopify cart endpoint using the correct store domain
-			// Manual override for testing - you can set this to your shop domain
-			const manualShopDomain = 'myeratestapi.myshopify.com'; // Change this to your shop domain
-			
-			const shopifyCartUrl = shopDomain 
-				? `https://${shopDomain}/cart/add`
-				: manualShopDomain 
-					? `https://${manualShopDomain}/cart/add`
-					: `${window.location.protocol}//${window.location.host}/cart/add`;
+			// Always POST directly to Shopify cart endpoint using your store domain
+			// Set your real shop domain here; we ignore current host to avoid 405 from Vercel/Netlify
+			const manualShopDomain = 'myeratestapi.myshopify.com';
+			const effectiveDomain = (shopDomain && /myshopify\.com$/.test(shopDomain)) ? shopDomain : manualShopDomain;
+			const shopifyCartUrl = `https://${effectiveDomain}/cart/add`;
 			
 			console.log('Shop domain:', shopDomain);
 			console.log('Manual shop domain:', manualShopDomain);
@@ -2427,7 +2423,12 @@ const FlowerAura = () => {
 			
 			const response = await fetch(shopifyCartUrl, {
 				method: 'POST',
-				body: formData
+				body: formData,
+				credentials: 'include',
+				redirect: 'follow',
+				headers: {
+					'X-Requested-With': 'XMLHttpRequest'
+				}
 			});
 
 			if (!response.ok) {
