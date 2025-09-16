@@ -2395,19 +2395,19 @@ const FlowerAura = () => {
 			formData.append('sections', 'cart-drawer,cart-icon-bubble');
 			formData.append('sections_url', productContext?.sections_url || window.location.pathname);
 			
-			// Add hamper-specific properties
-			formData.append('Hamper ID', hamperId);
-			formData.append('Hamper Type', 'FlowerAura Custom Hamper');
-			formData.append('Total Items', totalQuantity.toString());
-			formData.append('Total Price', totalPrice.toString());
-			formData.append('Selected Items', JSON.stringify(cartItems.map(item => ({
+			// Add hamper-specific properties (Shopify requires properties[Key] naming)
+			formData.append('properties[Hamper ID]', hamperId);
+			formData.append('properties[Hamper Type]', 'FlowerAura Custom Hamper');
+			formData.append('properties[Total Items]', totalQuantity.toString());
+			formData.append('properties[Total Price]', totalPrice.toString());
+			formData.append('properties[Selected Items]', JSON.stringify(cartItems.map(item => ({
 				name: item.ProductName,
 				category: item.Category,
 				price: item.Price,
 				quantity: item.quantity,
 				attribute_id: item.AttributeID
 			}))));
-			formData.append('Shop Domain', shopDomain || window.location.hostname);
+			formData.append('properties[Shop Domain]', shopDomain || window.location.hostname);
 
 			console.log('Adding to Shopify cart with form data:', Object.fromEntries(formData));
 
@@ -2421,6 +2421,25 @@ const FlowerAura = () => {
 			console.log('Manual shop domain:', manualShopDomain);
 			console.log('Posting to Shopify cart URL:', shopifyCartUrl);
 			
+			// If running cross-origin (iframe on different domain), submit a real form to _top to avoid CORS
+			const isCrossOrigin = (window.location.hostname && !(`${effectiveDomain}`.includes(window.location.hostname)));
+			if (isCrossOrigin) {
+				const form = document.createElement('form');
+				form.method = 'POST';
+				form.action = shopifyCartUrl;
+				form.target = '_top';
+				for (const [key, value] of formData.entries()) {
+					const input = document.createElement('input');
+					input.type = 'hidden';
+					input.name = key;
+					input.value = String(value);
+					form.appendChild(input);
+				}
+				document.body.appendChild(form);
+				form.submit();
+				return;
+			}
+
 			const response = await fetch(shopifyCartUrl, {
 				method: 'POST',
 				body: formData,
